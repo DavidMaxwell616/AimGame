@@ -1,0 +1,33 @@
+﻿<!DOCTYPE html>
+<HTML>
+<HEAD>
+    <link rel="stylesheet" href="css/stylesheet.css" type="text/css" charset="utf-8" />
+	<script src="js/phaser.min.js"></script>
+    <script src="src/Boot.js"></script>
+    <script src="src/Preloader.js"></script>
+    <script src="src/MainMenu.js"></script>
+    <script src="src/Game.js"></script>
+ </HEAD>
+<body>
+
+	<div id="game"></div>
+	<div id="orientation"></div>
+
+<script type="text/javascript">
+
+    window.onload = function () {
+
+        var game = new Phaser.Game(512, 384, Phaser.CANVAS, 'game');
+
+        game.state.add('Boot', AimGame.Boot);
+        game.state.add('Preloader', AimGame.Preloader);
+        game.state.add('MainMenu', AimGame.MainMenu);
+        game.state.add('Game', AimGame.Game);
+
+        game.state.start('Boot');
+
+    }
+</script>
+
+</body>
+</HTML>

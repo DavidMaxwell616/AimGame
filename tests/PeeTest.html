@@ -1,0 +1,142 @@
+﻿<meta charset="UTF-8">
+<HTML>
+<HEAD>
+	<script src="js/phaser.min.js"></script>
+ </HEAD>
+<body>
+
+	<div id="game"></div>
+
+<script type="text/javascript">
+
+    window.onload = function () {
+
+        var game = new Phaser.Game(800, 600, Phaser.AUTO, 'phaser-example', { preload: preload, create: create, update: update });
+        var PDrops;
+        var crosshairs;
+        var MAX_PDROPS = 1000;
+        var score = 0;
+        var scoreText;
+        var round = 1;
+        var counter = 0;
+        var count = 0;
+        var pSource;
+        function preload() {
+            this.load.image('crosshairs', 'assets/images/crosshairs.png');
+            this.load.image('PDrop', 'assets/images/PDrop.png');
+
+        }
+
+        function GameOver() {
+            var t = this.add.text(this.game.width / 2, this.game.height / 2, 'GAME OVER', { fill: '#FF0000', font: '32pt Impact' });
+        }
+
+        function create() {
+            PDrops = game.add.group();
+            PDrops.enableBody = true;
+            PDrops.physicsBodyType = Phaser.Physics.ARCADE;
+            PDrops.createMultiple(MAX_PDROPS, 'PDrop');
+            PDrops.callAll('events.onOutOfBounds.add', 'events.onOutOfBounds', resetPDrop);
+            PDrops.callAll('anchor.setTo', 'anchor', 0.5, 1.0);
+            PDrops.setAll('checkWorldBounds', true);
+            PDrops.setAll('alpha', .5);
+            PDrops.setAll('scale.x',.5);
+            PDrops.setAll('scale.y', .5);
+            //PDrops.x = game.width / 2;
+            //PDrops.y = game.height + 5;
+            this.pSource = game.add.sprite(this.game.width / 2, this.game.height, 'pDrop');
+
+            this.scoreText = game.add.text(8, 360, 'score: 0', { fill: '#ff0000', font: '16pt Arial' });
+            this.crosshairs = game.add.sprite(this.game.width / 2, this.game.height / 2, 'crosshairs');
+
+            this.crosshairs.anchor.setTo(0.5, 0.5);
+        }
+
+        function resetPDrop(pdrop) {
+            // Destroy the pdrop
+            pdrop.kill();
+        }
+        function update() {
+            this.scoreText.text = 'score:' + score;
+            moveCrosshairs(this.game.input.activePointer.x, this.game.input.activePointer.y, this.crosshairs);
+            game.debug.text("Current Round: " + round, 100, game.height - 50);
+            PDrops.forEach(function (pdrop) {
+                if (game.physics.arcade.distanceToPointer(pdrop)<this.crosshairs.width*.25) {
+                    resetPDrop(pdrop);
+                    score += 50;
+                }
+            }, this);
+
+            counter++;
+            if (counter > 500) {
+                round++;
+                counter = 0;
+            }
+            firePDrop(game.physics.arcade.angleBetween(this.pSource, this.crosshairs));
+        }
+            
+        function firePDrop(radians) {
+            // Get the first pdrop that's inactive, by passing 'false' as a parameter
+            var pdrop = PDrops.getFirstExists(false);
+            if (pdrop) {
+                // If we have a pdrop, set it to the starting position
+                pdrop.reset(game.width / 2, game.height);
+                // Give it a velocity of -500 so it starts shooting
+                var degrees = radians * (180 / Math.PI);
+                 
+                //console.log(" velocity: " + pdrop.body.velocity);
+                game.physics.arcade.velocityFromAngle(degrees, 300, pdrop.body.velocity);
+                //console.log("pdrop x: " + pdrop.body.velocity);
+                pdrop.rotation = game.physics.arcade.angleToPointer(pdrop) + 90;
+                //game.physics.arcade.moveToPointer(pdrop, 300);
+            }
+            
+
+        }
+
+        function moveCrosshairs(px, py, cross) {
+            var value1 = 0;
+            var value2 = 0;
+            var rand = 10 * round;
+            count++;
+            value1 = (Math.random(2 * rand + 1) - rand);//ramp("ramp1", 0, 50, 0.500000, 0);
+            value2 = (Math.random(2 * rand + 1) - rand);// ramp("ramp2", 0, 50, 0.500000, 0);
+            cross.x = value1 * Math.sin(count / 10) + px;
+            cross.y = value2 * Math.cos(count / 20) + py;
+            //console.log("cross.x:" + cross.x + " pointer x:" + px);
+            //cross.x = px;
+            //cross.y = py;
+
+            if (cross.x < 0) {
+                cross.x = 0;
+            }
+            if (game.width < cross.x) {
+                cross.x = game.width;
+            }
+            if (cross.y < 0) {
+                cross.y = 0;
+            }
+            if (game.height < cross.y) {
+                cross.y = game.height;
+            }
+        } // End of the function
+
+        function ramp(id, start, end, inc, rand) {
+            var output;
+            //_root[id] = _root[id] + inc;
+            //if (_root[id] + inc < end) {
+            //    output = _root[id];
+            //}
+            //else {
+            //    output = end;
+            //} // end if
+            output = output + (Math.random(2 * rand + 1) - rand);
+            return (output);
+        } // End of the function
+
+
+    }
+</script>
+
+</body>
+</HTML>
