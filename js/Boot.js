@@ -1,80 +1,127 @@
-AimGame = {
+let playing = true;
+let score;
+let scoreText;
+let roundText;
+let warningText;
+let PDrops;
+let emitter;
+let gameLost;
+let gameWon;
+let crosshairs;
+const MAX_PDROPS = 1000;
+let round = 0;
+let pint = [];
+let started = false;
+let start;
+let pSource;
+let count = 0;
+let target;
+let pee;
+const PEE_LIFESPAN = 750;
+const NUM_ROUNDS = 8;
+let warninglife = 100;
+let warnings = 1;
+let soundButton;
+let soundOn = true;
+let blurinal;
+let startGame = false;
 
-    /* Here we've just got some global level vars that persist regardless of State swaps */
-    score: 0,
+//SOUNDS
+var boo;
+var cheer;
+var flush
+var music1;
+var music2;
+var peeMetal;
+var peeSplash1;
+var peeSplash2;
+var peeWater;
+var relief1;
+var relief2;
+var relief3;
+var relief4;
+var shoes1;
+var shoes2;
+var zip;
 
-    /* If the music in your game needs to play through-out a few State swaps, then you could reference it here */
-    music: null,
 
-    /* Your game can check AimGame.orientated in internal loops to know if it should pause or not */
-    orientated: false
+// AimGame = {
 
-};
+//     /* Here we've just got some global level vars that persist regardless of State swaps */
+//     score: 0,
 
-AimGame.Boot = function (game) {
-};
+//     /* If the music in your game needs to play through-out a few State swaps, then you could reference it here */
+//     music: null,
 
-AimGame.Boot.prototype = {
+//     /* Your game can check AimGame.orientated in internal loops to know if it should pause or not */
+//     orientated: false
 
-    preload: function () {
+// };
 
-        this.load.image('preloaderBar', 'assets/images/preload.png');
+// AimGame.Boot = function (game) {
+// };
 
-    },
+// AimGame.Boot.prototype = {
 
-    create: function () {
+//     preload: function () {
 
-        this.input.maxPointers = 1;
-        // this.stage.disableVisibilityChange = true;
+//         let load.image('preloaderBar', 'assets/images/preload.png');
 
-        if (this.game.device.desktop)
-        {
-            this.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
-            this.scale.minWidth = 256;
-            this.scale.minHeight = 196;
-            this.scale.maxWidth = 512;
-            this.scale.maxHeight = 384;
-            this.scale.pageAlignHorizontally = true;
-            this.scale.pageAlignVertically = true;
-            this.scale.setScreenSize(true);
-        }
-        else
-        {
-            this.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
-            this.scale.minWidth = 480;
-            this.scale.minHeight = 260;
-            this.scale.maxWidth = 1024;
-            this.scale.maxHeight = 768;
-            this.scale.pageAlignHorizontally = true;
-            this.scale.pageAlignVertically = true;
-            this.scale.forceOrientation(true, false);
-            this.scale.setResizeCallback(this.gameResized, this);
-            this.scale.enterIncorrectOrientation.add(this.enterIncorrectOrientation, this);
-            this.scale.leaveIncorrectOrientation.add(this.leaveIncorrectOrientation, this);
-            this.scale.setScreenSize(true);
-        }
+//     },
 
-        this.state.start('Preloader');
+//     create: function () {
 
-    },
+//         let input.maxPointers = 1;
+//         // let stage.disableVisibilityChange = true;
 
-    gameResized: function (width, height) {
-    },
+//         if (let game.device.desktop)
+//         {
+//             let scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+//             let scale.minWidth = 256;
+//             let scale.minHeight = 196;
+//             let scale.maxWidth = 512;
+//             let scale.maxHeight = 384;
+//             let scale.pageAlignHorizontally = true;
+//             let scale.pageAlignVertically = true;
+//             let scale.setScreenSize(true);
+//         }
+//         else
+//         {
+//             let scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+//             let scale.minWidth = 480;
+//             let scale.minHeight = 260;
+//             let scale.maxWidth = 1024;
+//             let scale.maxHeight = 768;
+//             let scale.pageAlignHorizontally = true;
+//             let scale.pageAlignVertically = true;
+//             let scale.forceOrientation(true, false);
+//             let scale.setResizeCallback(let gameResized, this);
+//             let scale.enterIncorrectOrientation.add(let enterIncorrectOrientation, this);
+//             let scale.leaveIncorrectOrientation.add(let leaveIncorrectOrientation, this);
+//             let scale.setScreenSize(true);
+//         }
 
-    enterIncorrectOrientation: function () {
+//         let state.start('Preload');
 
-        AimGame.orientated = false;
+//     },
 
-        document.getElementById('orientation').style.display = 'block';
+//     gameResized: function (width, height) {
+//     },
 
-    },
+//     enterIncorrectOrientation: function () {
 
-    leaveIncorrectOrientation: function () {
+//         AimGame.orientated = false;
 
-        AimGame.orientated = true;
+//         document.getElementById('orientation').style.display = 'block';
 
-        document.getElementById('orientation').style.display = 'none';
+//     },
 
-    }
+//     leaveIncorrectOrientation: function () {
 
-};
+//         AimGame.orientated = true;
+
+//         document.getElementById('orientation').style.display = 'none';
+
+//     }
+
+// };
