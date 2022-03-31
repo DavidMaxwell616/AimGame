@@ -13,53 +13,72 @@ const game = new Phaser.Game(800, 600, Phaser.ARCADE, 'game', {
         gameLost = false;
         gameWon = false;
  
-        stage.smoothed = false;
+        game.stage.smoothed = false;
 
-        physics.startSystem(Phaser.Physics.ARCADE);
+        game.physics.startSystem(Phaser.Physics.ARCADE);
 
-        var urinal = add.image(0, 0, 'background');
+        var urinal = game.add.image(0, 0, 'background');
         urinal.width = game.width;
         urinal.height = game.height;
 
         score = 0;
-        scoreText = add.text(8, 360, 'SCORE: 0', { fill: '#ff0000', font: '16pt Impact' });
+        scoreText = game.add.text(8, 8, 'SCORE: 0', { fill: '#ff0000', font: '16pt Impact' });
         var posX = game.width / 2;
-        warningText = add.text(posX,
+        warningText = game.add.text(posX,
             game.height / 2,
             'WARNING!!',
             { fill: '#ff0000', font: '16pt Impact' });
         warningText.updateText();
         warningText.x = posX - (warningText.width * 0.5);
         warningText.visible = false;
-
-        roundText = add.text(posX,
-            game.height / 2,
+        highScoreText = game.add.text(
+            game.width*.4,
+            8,
+            'HIGH SCORE: ' + highScore, 
+            { 
+                fill: '#ff0000', font: '16pt Impact'
+            });
+          
+        roundText = game.add.text(game.width,
+            8,
             'ROUND: ' + Math.floor(round+1),
             { fill: '#ff0000', font: '16pt Impact' });
         roundText.updateText();
-        roundText.x = posX - (roundText.width * 0.5);
-        roundText.visible = false;
+        roundText.x = game.width - roundText.width*1.5;
+       // roundText.visible = false;
 
         boo = game.add.audio('boo');
         cheer = game.add.audio('cheer');
-        music1 = game.add.audio('music-1');
-        music2 = game.add.audio('music-2');
+        flush = game.add.audio('flush');
+        music1 = game.add.audio('music1');
+        music2 = game.add.audio('music2');
         peeMetal = game.add.audio('peeMetal');
-        peeSplash = game.add.audio('peeSplash');
+        peeSplash1 = game.add.audio('peeSplash1');
+        peeSplash2 = game.add.audio('peeSplash2');
         peeWater = game.add.audio('peeWater');
-        relief1 = game.add.audio('relief-1');
-        relief2 = game.add.audio('relief-2');
-
-        add.image(360, 350, 'maxxdaddy');
-        soundButton = add.button(400,
-            5,
-            'soundButton',
-            toggleSound,
-            this,
-            'buttonOver',
-            'buttonOut',
-            'buttonOver');
-
+        relief1 = game.add.audio('relief1');
+        relief2 = game.add.audio('relief2');
+        relief3 = game.add.audio('relief3');
+        relief4 = game.add.audio('relief4');
+        shoes1 = game.add.audio('shoes1');
+        shoes2 = game.add.audio('shoes2');
+        zip = game.add.audio('zip');
+        game.add.image(game.width*.8, game.height*.93, 'maxxdaddy');
+        soundButton = game.add.button(
+                10, 
+                game.height-40, 
+                'soundButton', 
+                toggleSound, 
+                this,
+                2, 
+                1, 
+                0);
+        highScore = localStorage.getItem(localStorageName) == null ? 0 :
+        localStorage.getItem(localStorageName);
+    
+              //  soundButton.onInputOver.add(buttonOver, this);
+              //  soundButton.onInputOut.add(buttonOut, this);
+        
         PDrops = game.add.group();
         PDrops.enableBody = true;
         PDrops.physicsBodyType = Phaser.Physics.ARCADE;
@@ -73,7 +92,7 @@ const game = new Phaser.Game(800, 600, Phaser.ARCADE, 'game', {
         PDrops.setAll('lifespan', PEE_LIFESPAN);
 
         for (var i = 0; i < NUM_ROUNDS; i++) {
-            pint[i] = game.add.sprite((i * 40) + 50, 30, 'pints');
+            pint[i] = game.add.sprite(250+i*40, 30, 'pints');
             pint[i].anchor.setTo(0.5, 0.5);
             pint[i].animations.add('drink');
             pint[i].frame = 0;
@@ -81,11 +100,11 @@ const game = new Phaser.Game(800, 600, Phaser.ARCADE, 'game', {
                     started = false;
                     start.visible = true;
                     blurinal.visible = false;
-                    roundText.visible = true;
+                    //roundText.visible = true;
                     round++;
                     warnings = 0;
-                    pee.scale.x = 0;
-                    pee.scale.y = 0;
+                    peePool.scale.x = 0;
+                    peePool.scale.y = 0;
                     crosshairs.visible = false;
                     splash.pause();
                     playSound(relief);
@@ -101,42 +120,45 @@ const game = new Phaser.Game(800, 600, Phaser.ARCADE, 'game', {
         crosshairs.anchor.setTo(0.5, 0.5);
         crosshairs.visible = false;
 
-        pee = game.add.sprite(game.width / 2 + 10, game.width / 2 + 30, 'pee');
+        peePool = game.add.sprite(game.width / 2 + 10, game.width / 2 + 30, 'pee');
 
-        pee.anchor.setTo(0.5, 0.5);
-        pee.alpha = .4;
-        pee.scale.x = 0;
-        pee.scale.y = 0;
+        peePool.anchor.setTo(0.5, 0.5);
+        peePool.alpha = .4;
+        peePool.scale.x = 0;
+        peePool.scale.y = 0;
 
         pSource = game.add.sprite(game.width / 2, game.height, 'pDrop');
 
-        target = game.add.image(game.width / 2 + 10, game.width / 2 + 30, 'target');
+        target = game.add.image(game.width *.525, game.height *.74, 'target');
         target.anchor.set(0.5);
 
         //input.onDown.add(dropBomb, this);
-        start = add.image(game.width / 2, game.height - 100, 'start');
+        start = game.add.image(game.width *.525, game.height *.74, 'start');
         start.anchor.set(0.5);
         start.inputEnabled = true;
         start.events.onInputDown.add(listener, this);
-        roundText.visible = true;
+        //roundText.visible = true;
 
-        music1.addEventListener('ended', function () {
-            currentTime = 0;
-            play();
-        }, false);
-        splash1.addEventListener('ended', function () {
-            currentTime = 0;
-            play();
-        }, false);
-      peeMetal.addEventListener('ended', function () {
-            currentTime = 0;
-            play();
-        }, false);
+    //     music1.addEventListener('ended', function () {
+    //         currentTime = 0;
+    //         play();
+    //     }, false);
+    //     splash1.addEventListener('ended', function () {
+    //         currentTime = 0;
+    //         play();
+    //     }, false);
+    //   peeMetal.addEventListener('ended', function () {
+    //         currentTime = 0;
+    //         play();
+    //     }, false);
 
+miss = peeMetal;
+splash = peeSplash1;
+relief = relief1;
 
-        playSound(zip);
+    playSound(zip);
 
-        blurinal = add.image(0, 0, 'background');
+        blurinal = game.add.image(0, 0, 'background');
         blurinal.width = game.width;
         blurinal.height = game.height;
         blurinal.alpha = .5;
@@ -145,8 +167,9 @@ const game = new Phaser.Game(800, 600, Phaser.ARCADE, 'game', {
 
     function listener() {
         started = true;
+        playing = true;
         start.visible = false;
-        roundText.visible = false;
+        //roundText.visible = false;
     };
 
     function resetPDrop(pdrop) {
@@ -154,7 +177,7 @@ const game = new Phaser.Game(800, 600, Phaser.ARCADE, 'game', {
         pdrop.kill();
     };
 
-   function playSound(sound)
+    function playSound(sound)
     {
         if(soundOn)
         {
@@ -163,85 +186,88 @@ const game = new Phaser.Game(800, 600, Phaser.ARCADE, 'game', {
     };
 
   function update() {
-        if (playing) {
-            playSound(music);
-            scoreText.text = 'SCORE:' + score;
-            warningText.visible = false;
-            if (round == NUM_ROUNDS) {
-                playing = false;
-                gameWon = true;
-            }
-            if (started) {
-                crosshairs.visible = true;
-
-                for (var i = 0; i < NUM_ROUNDS; i++) {
-                    if (!pint[i].visible) {
-                        pint[i].visible = true;
-                    }
-                }
-                pint[round].animations.play('drink', 1, false);
-                moveCrosshairs(game.input.activePointer.x, game.input.activePointer.y, crosshairs);
-                if (round >= NUM_ROUNDS / 2) {
-                    blurinal.visible = true;
-                    moveBlurinal();
-                }
-                PDrops.forEach(function (pdrop) {
-                        //console.log(pdrop.lifespan);
-                    pdrop.lifespan--;
-                        var distance = Math.floor(Phaser.Math
-                            .distance(pdrop.x, pdrop.y, crosshairs.x, crosshairs.y));
-                        if (pdrop.lifespan == 0 || distance < crosshairs.width * .2) {
-                            //console.log(pdrop.y + " " + game.height/2);
-                            var isOnTarget = Math.floor(Phaser.Math
-                                .distance(pdrop.x, pdrop.y, target.x, target.y) <
-                                target.width * .5);
-                            
-                            if (isOnTarget) {
-                                score += Math.floor(((crosshairs.width - distance) / 200)*(round+1));
-                                if (pee.scale.x < 1.5) {
-                                    pee.scale.x += .0003;
-                                    pee.scale.y += .0003;
-                                    miss.pause();
-                                    playSound(splash);
-                                 }
-                                warningText.visible = false;
-                            } else {
-                                var deadDrop = (pdrop.x == 0 && pdrop.y == 0);
-                                if (!deadDrop) {
-                                    warningText.visible = true;
-                                    warninglife--;
-                                    splash.pause();
-                                    playSound(miss);
-                                    if (warninglife == 0) {
-                                        warninglife = 100;
-                                        warnings++;
-                                    }
-                                    if (warnings > 5) {
-                                            splash.pause();
-                                            miss.pause();
-                                            pint[round].animations.stop();
-                                            gameWon = false;
-                                            playing = false;
-                                            started = false;
-                                        }
-                                }
-                            }
-                            resetPDrop(pdrop);
-                        }
-                    },
-                    this);
-                var radians = game.physics.arcade.angleBetween(pSource, crosshairs);
-                var degrees = radians * (180 / Math.PI);
-                firePDrop(degrees);
-            }
-        } else {
-            gameOver();
+if(!playing)
+return;
+        playSound(music1);
+        scoreText.text = 'SCORE:' + score;
+        warningText.visible = false;
+        if (round == NUM_ROUNDS) {
+            playing = false;
+            gameWon = true;
         }
+        if (started) {
+            crosshairs.visible = true;
+
+            for (var i = 0; i < NUM_ROUNDS; i++) {
+                if (!pint[i].visible) {
+                    pint[i].visible = true;
+                }
+            }
+            pint[round].animations.play('drink', 1, false);
+            moveCrosshairs(game.input.activePointer.x, game.input.activePointer.y, crosshairs);
+            if (round >= NUM_ROUNDS / 2) {
+                blurinal.visible = true;
+                moveBlurinal();
+            }
+            PDrops.forEach(function (pdrop) {
+                    //console.log(pdrop.lifespan);
+                pdrop.lifespan--;
+                    var distance = Math.floor(Phaser.Math
+                        .distance(pdrop.x, pdrop.y, crosshairs.x, crosshairs.y));
+                    if (pdrop.lifespan == 0 || distance < crosshairs.width * .2) {
+                        //console.log(pdrop.y + " " + game.height/2);
+                        var isOnTarget = Math.floor(Phaser.Math
+                            .distance(pdrop.x, pdrop.y, target.x, target.y) <
+                            target.width * .5);
+                        
+                        if (isOnTarget) {
+                            score += Math.floor(((crosshairs.width - distance) / 200)*(round+1));
+                            if (peePool.scale.x < 1.5) {
+                                peePool.scale.x += .0003;
+                                peePool.scale.y += .0003;
+                                miss.pause();
+                                playSound(splash);
+                                }
+                            warningText.visible = false;
+                        } else {
+                            var deadDrop = (pdrop.x == 0 && pdrop.y == 0);
+                            if (!deadDrop) {
+                                warningText.visible = true;
+                                warninglife--;
+                                splash.stop();
+                                playSound(miss);
+                                if (warninglife == 0) {
+                                    warninglife = 100;
+                                    warnings++;
+                                }
+                                if (warnings > 5) {
+                                        splash.pause();
+                                        miss.pause();
+                                        pint[round].animations.stop();
+                                        gameWon = false;
+                                        playing = false;
+                                        started = false;
+                                    }
+                            }
+                        }
+                        resetPDrop(pdrop);
+                    }
+                },
+                this);
+            var radians = game.physics.arcade.angleBetween(pSource, crosshairs);
+            var degrees = radians * (180 / Math.PI);
+            firePDrop(degrees);
+        }
+//    } 
+        
+        // else {
+        //     gameOver();
+        // }
     };
     
     function toggleSound()
  	{
- 	    music.pause();
+        music1.pause();
  	    soundOn = !soundOn;
  	};
 

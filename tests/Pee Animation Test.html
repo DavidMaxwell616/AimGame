@@ -1,0 +1,35 @@
+﻿<meta charset="UTF-8">
+<HTML>
+<HEAD>
+	<script src="../js/phaser.min.js"></script>
+ </HEAD>
+<body>
+
+	<div id="game"></div>
+
+<script type="text/javascript">
+
+    window.onload = function () {
+    var stream;
+        var game = new Phaser.Game(800, 600, Phaser.AUTO, 'phaser-example', { preload: preload, create: create, update: update });
+
+        function preload() {
+            this.load.spritesheet('pee', '../assets/images/peesheet.png',479,358);
+        }
+
+        function create() {
+            stream = game.add.sprite(this.game.width / 2, this.game.height / 2, 'pee');
+
+            const pee = stream.animations.add('pee');
+            stream.scale.y = -1;
+
+            stream.animations.play('pee', 20, true);
+        }
+
+        function update(){}
+    }
+ 
+</script>
+
+</body>
+</HTML>
