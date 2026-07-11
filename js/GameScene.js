@@ -1,9 +1,7 @@
 import {
     W,
     H,
-    MAX_PDROPS,
     NUM_ROUNDS,
-    PEE_LIFESPAN,
     localStorageName
 } from "./config.js";
 
@@ -18,7 +16,6 @@ export class GameScene extends Phaser.Scene {
         this.load.image("background", "assets/images/urinal.jpg");
         this.load.image("maxxdaddy", "assets/images/maxxdaddy.gif");
         this.load.image("pee", "assets/images/pee.png");
-        this.load.image("PDrop", "assets/images/PDrop.png");
         this.load.image("soundButton", "assets/images/soundButton.png");
         this.load.image("splash", "assets/images/FubarMissleLogo.jpg");
         this.load.image("target", "assets/images/target.png");
@@ -71,9 +68,8 @@ export class GameScene extends Phaser.Scene {
         this.score = 0;
         this.round = 0;
         this.highScore = Number(localStorage.getItem(localStorageName)) || 0;
-
-        this.nextDropTime = 0;
-        this.dropDelay = 35;
+        this.nextStreamHitTime = 0;
+        this.streamHitDelay = 35;
 
         this.pints = [];
 
@@ -113,7 +109,7 @@ export class GameScene extends Phaser.Scene {
         this.peeMetal = this.sound.add("peeMetal");
         this.peeSplash1 = this.sound.add("peeSplash1");
         this.peeSplash2 = this.sound.add("peeSplash2");
-        this.peeWater = this.sound.add("peeWater");
+        this.peeWater = this.sound.add("peeWater", { loop: true, volume: 0.45 });
         this.relief1 = this.sound.add("relief1");
         this.relief2 = this.sound.add("relief2");
         this.relief3 = this.sound.add("relief3");
@@ -126,27 +122,15 @@ export class GameScene extends Phaser.Scene {
         this.miss = this.peeMetal;
         this.splashSound = this.peeSplash1;
         this.relief = this.relief1;
+        this.splashSounds = [this.peeSplash1, this.peeSplash2];
+        this.reliefSounds = [this.relief1, this.relief2, this.relief3, this.relief4];
+        this.shoeSounds = [this.shoes1, this.shoes2, this.shoes3];
+        this.streamWasOnTarget = null;
 
         this.add.image(W * 0.85, H * 0.93, "maxxdaddy");
 
         this.soundButton = this.add.image(50, H - 40, "soundButton").setInteractive();
         this.soundButton.on("pointerdown", this.toggleSound, this);
-
-        this.PDrops = this.physics.add.group({
-            key: "PDrop",
-            quantity: MAX_PDROPS,
-            active: false,
-            visible: false
-        });
-
-        this.PDrops.children.iterate((child) => {
-            child.setOrigin(0.5, 1);
-            child.setAlpha(0.5);
-            child.setScale(0.5);
-            child.lifespan = PEE_LIFESPAN;
-            child.body.allowGravity = false;
-            child.body.setEnable(false);
-        });
 
         if (!this.anims.exists("drink")) {
             this.anims.create({
@@ -177,13 +161,34 @@ export class GameScene extends Phaser.Scene {
         this.crosshairs.setOrigin(0.5);
         this.crosshairs.visible = false;
 
-        this.peePool = this.add.sprite(W / 2 + 10, H / 2 + 30, "pee");
+        this.peePool = this.add.sprite(W * 0.525, H * 0.74, "pee");
         this.peePool.setOrigin(0.5);
         this.peePool.alpha = 0.4;
         this.peePool.setScale(0);
 
-        this.pSource = this.add.sprite(W / 2, H, "PDrop").setScale(.2);
-        this.pSource.setVisible(false);
+        this.pSource = { x: W / 2, y: H };
+
+        if (!this.anims.exists("peeStreamFlow")) {
+            this.anims.create({
+                key: "peeStreamFlow",
+                frames: this.anims.generateFrameNumbers("peeStream", {
+                    start: 0,
+                    end: 41
+                }),
+                frameRate: 20,
+                repeat: -1
+            });
+        }
+
+        // The source is anchored to the bottom of the stream artwork. Scaling the
+        // sprite vertically lets it continuously reach the moving crosshairs.
+        this.peeStream = this.add.sprite(this.pSource.x, this.pSource.y, "peeStream");
+        this.peeStream.setOrigin(0.5, 1);
+        this.peeStream.setAlpha(0.65);
+        this.peeStream.setVisible(false);
+        this.peeStream.setDepth(1);
+        this.peeStream.play("peeStreamFlow");
+        this.crosshairs.setDepth(2);
 
         this.target = this.add.image(W * 0.525, H * 0.74, "target");
         this.target.setOrigin(0.5);
@@ -191,8 +196,10 @@ export class GameScene extends Phaser.Scene {
 
         this.blurinal = this.add.image(0, 0, "background");
         this.blurinal.setOrigin(0);
-        this.blurinal.displayWidth = W;
-        this.blurinal.displayHeight = H;
+        this.blurinalMargin = 30;
+        this.blurinal.displayWidth = W + this.blurinalMargin * 2;
+        this.blurinal.displayHeight = H + this.blurinalMargin * 2;
+        this.blurinal.setPosition(-this.blurinalMargin, -this.blurinalMargin);
         this.blurinal.alpha = 0.5;
         this.blurinal.visible = false;
 
@@ -205,6 +212,7 @@ export class GameScene extends Phaser.Scene {
             this.playing = true;
             this.start.visible = false;
             this.playSound(this.zip);
+            this.playSound(this.peeWater);
         });
     }
 
@@ -218,8 +226,6 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.scoreText.setText("SCORE: " + this.score);
-        this.warningText.visible = false;
-
         if (this.round >= NUM_ROUNDS) {
             this.gameWon = true;
             this.playing = false;
@@ -254,131 +260,107 @@ export class GameScene extends Phaser.Scene {
             this.moveBlurinal();
         }
 
-        this.updatePDrops();
+        this.updatePeeStream();
 
-        if (time > this.nextDropTime) {
-            this.fireNextPDrop();
-            this.nextDropTime = time + this.dropDelay;
+        if (time > this.nextStreamHitTime) {
+            this.updateStreamHit();
+            this.nextStreamHitTime = time + this.streamHitDelay;
         }
     }
 
-    updatePDrops() {
-        this.PDrops.getChildren().forEach((pdrop) => {
-            if (!pdrop.active) {
-                return;
-            }
+    updatePeeStream() {
+        const dx = this.crosshairs.x - this.pSource.x;
+        const dy = this.crosshairs.y - this.pSource.y;
+        const distance = Math.hypot(dx, dy);
 
-            pdrop.lifespan--;
+        this.peeStream.setPosition(this.pSource.x, this.pSource.y);
+        this.peeStream.setRotation(Math.atan2(dy, dx) + Math.PI / 2);
+        this.peeStream.setScale(0.22, distance / this.peeStream.height);
+        this.peeStream.setVisible(true);
+    }
 
-            const distance = Math.floor(
-                Phaser.Math.Distance.Between(
-                    pdrop.x,
-                    pdrop.y,
-                    this.target.x,
-                    this.target.y
+    updateStreamHit() {
+        const distance = Phaser.Math.Distance.Between(
+            this.crosshairs.x,
+            this.crosshairs.y,
+            this.target.x,
+            this.target.y
+        );
+        const isOnTarget = distance < this.target.displayWidth * 0.5;
+
+        if (isOnTarget) {
+            this.score += Math.max(
+                1,
+                Math.floor(
+                    ((this.target.displayWidth - distance) / 200) * (this.round + 1)
                 )
             );
 
-            const hitTargetCenter = distance < this.target.displayWidth * 0.2;
-            const expired = pdrop.lifespan <= 0;
-
-            if (expired || hitTargetCenter) {
-                const isOnTarget = distance < this.target.displayWidth * 0.5;
-
-                if (isOnTarget) {
-                    this.score += Math.floor(
-                        ((this.target.displayWidth - distance) / 200) * (this.round + 1)
-                    );
-
-                    if (this.peePool.scaleX < 1.5) {
-                        this.peePool.setScale(this.peePool.scaleX + 0.0003);
-                    }
-
-                    this.miss.pause();
-                    this.playSound(this.splashSound);
-                    this.warningText.visible = false;
-                } else {
-                    const deadDrop = pdrop.x === 0 && pdrop.y === 0;
-
-                    if (!deadDrop) {
-                        this.warningText.visible = true;
-                        this.warningLife--;
-
-                        this.splashSound.stop();
-                        this.playSound(this.miss);
-
-                        if (this.warningLife <= 0) {
-                            this.warningLife = 100;
-                            this.warnings++;
-                        }
-
-                        if (this.warnings > 5) {
-                            this.splashSound.pause();
-                            this.miss.pause();
-
-                            if (this.pints[this.round]) {
-                                this.pints[this.round].anims.stop();
-                            }
-
-                            this.gameWon = false;
-                            this.playing = false;
-                            this.started = false;
-                            this.thisOver();
-                        }
-                    }
-                }
-
-                this.resetPDrop(pdrop);
+            if (this.peePool.scaleX < 1.5) {
+                this.peePool.setScale(Math.min(1.5, this.peePool.scaleX + 0.01));
             }
-        });
-    }
 
-    fireNextPDrop() {
-        const pdrop = this.PDrops.getFirstDead(false);
-
-        if (!pdrop) {
+            this.miss.stop();
+            if (this.streamWasOnTarget !== true) {
+                this.splashSound = Phaser.Math.RND.pick(this.splashSounds);
+                this.playSound(this.splashSound);
+            }
+            this.streamWasOnTarget = true;
+            this.warningText.visible = false;
+            this.burstPeeParticles(this.crosshairs.x, this.crosshairs.y);
             return;
         }
 
-        const radians = Phaser.Math.Angle.Between(
-            this.pSource.x,
-            this.pSource.y,
-            this.crosshairs.x,
-            this.crosshairs.y
-        );
+        this.warningText.visible = true;
+        this.warningLife--;
 
-        const degrees = Phaser.Math.RadToDeg(radians);
+        if (this.streamWasOnTarget !== false) {
+            this.splashSounds.forEach((sound) => sound.stop());
+            this.playSound(this.miss);
+        }
+        this.streamWasOnTarget = false;
 
-        this.firePDrop(pdrop, degrees);
+        if (this.warningLife <= 0) {
+            this.warningLife = 100;
+            this.warnings++;
+            this.playSound(Phaser.Math.RND.pick(this.shoeSounds));
+
+            if (this.warnings > 5) {
+                this.splashSound.pause();
+                this.miss.pause();
+                this.pints[this.round]?.anims.stop();
+                this.gameWon = false;
+                this.playing = false;
+                this.started = false;
+                this.thisOver();
+            }
+        }
     }
 
-    firePDrop(pdrop, degrees) {
-        pdrop.setActive(true);
-        pdrop.setVisible(true);
-        pdrop.setPosition(W / 2, H);
-        pdrop.setScale(.1);
-        pdrop.lifespan = PEE_LIFESPAN;
+    burstPeeParticles(x, y) {
+        for (let i = 0; i < 10; i++) {
+            const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+            const distance = Phaser.Math.Between(28, 75);
+            const dot = this.add.circle(
+                x,
+                y,
+                Phaser.Math.Between(2, 4),
+                Phaser.Math.RND.pick([0xffd000, 0xffea36, 0xffff8a]),
+                1
+            );
+            dot.setDepth(3);
+            dot.setBlendMode(Phaser.BlendModes.ADD);
 
-        pdrop.body.setEnable(true);
-        pdrop.body.allowGravity = false;
-
-        this.physics.velocityFromAngle(
-            degrees,
-            300,
-            pdrop.body.velocity
-        );
-
-        pdrop.rotation = Phaser.Math.DegToRad(degrees) + Math.PI / 2;
-    }
-
-    resetPDrop(pdrop) {
-        pdrop.setActive(false);
-        pdrop.setVisible(false);
-        pdrop.setPosition(0, 0);
-
-        if (pdrop.body) {
-            pdrop.body.stop();
-            pdrop.body.setEnable(false);
+            this.tweens.add({
+                targets: dot,
+                x: x + Math.cos(angle) * distance,
+                y: y + Math.sin(angle) * distance + Phaser.Math.Between(4, 16),
+                alpha: 0,
+                scale: 0.35,
+                duration: Phaser.Math.Between(380, 650),
+                ease: "Quad.easeOut",
+                onComplete: () => dot.destroy()
+            });
         }
     }
 
@@ -388,14 +370,19 @@ export class GameScene extends Phaser.Scene {
 
         this.start.visible = true;
         this.blurinal.visible = false;
+        this.warningText.visible = false;
 
         this.round++;
         this.warnings = 0;
         this.warningLife = 100;
+        this.streamWasOnTarget = null;
 
         this.peePool.setScale(0);
+        this.peeStream.setVisible(false);
 
-        this.splashSound.pause();
+        this.peeWater.stop();
+        this.splashSounds.forEach((sound) => sound.stop());
+        this.relief = Phaser.Math.RND.pick(this.reliefSounds);
         this.playSound(this.relief);
         this.playSound(this.flush);
 
@@ -411,35 +398,41 @@ export class GameScene extends Phaser.Scene {
 
     toggleSound() {
         this.soundOn = !this.soundOn;
+        this.sound.mute = !this.soundOn;
 
-        if (!this.soundOn) {
-            this.music1.pause();
-            this.music2.pause();
+        if (this.soundOn && this.started && !this.peeWater.isPlaying) {
+            this.peeWater.play();
         }
     }
 
     moveBlurinal() {
-        const rand = 10 * this.round;
+        const amplitude = 3 + this.round * 1.5;
+        const offsetX =
+            Math.sin(this.count * 1.1) * amplitude +
+            Math.sin(this.count * 0.41 + 0.8) * amplitude * 0.35;
+        const offsetY =
+            Math.cos(this.count * 0.9) * amplitude +
+            Math.sin(this.count * 0.53 + 1.7) * amplitude * 0.4;
 
-        const value1 = Phaser.Math.Between(-rand, rand);
-        const value2 = Phaser.Math.Between(-rand, rand);
-
-        this.blurinal.x = value1 * Math.sin(this.count / 10);
-        this.blurinal.y = value2 * Math.cos(this.count / 20);
-
-        this.blurinal.x = Phaser.Math.Clamp(this.blurinal.x, 0, W);
-        this.blurinal.y = Phaser.Math.Clamp(this.blurinal.y, 0, H);
+        this.blurinal.x = -this.blurinalMargin + offsetX;
+        this.blurinal.y = -this.blurinalMargin + offsetY;
     }
 
     moveCrosshairs(px, py, cross) {
-        const rand = 10 * this.round;
-        this.count++;
+        // Layered sine waves produce a broad, natural sway without choosing a
+        // new random direction every frame. Later rounds increase the drift.
+        const amplitude = 18 + this.round * 7;
+        this.count += 0.045;
 
-        const value1 = Phaser.Math.Between(-rand, rand);
-        const value2 = Phaser.Math.Between(-rand, rand);
+        const offsetX =
+            Math.sin(this.count * 1.35) * amplitude +
+            Math.sin(this.count * 0.47 + 1.2) * amplitude * 0.35;
+        const offsetY =
+            Math.cos(this.count * 1.05) * amplitude +
+            Math.sin(this.count * 0.61 + 2.4) * amplitude * 0.4;
 
-        cross.x = value1 * Math.sin(this.count / 10) + px;
-        cross.y = value2 * Math.cos(this.count / 20) + py;
+        cross.x = px + offsetX;
+        cross.y = py + offsetY;
 
         cross.x = Phaser.Math.Clamp(cross.x, 0, W);
         cross.y = Phaser.Math.Clamp(cross.y, 0, H);
@@ -449,6 +442,10 @@ export class GameScene extends Phaser.Scene {
         this.blurinal.visible = false;
         this.crosshairs.visible = false;
         this.start.visible = false;
+        this.peeStream.setVisible(false);
+        this.peeWater.stop();
+        this.splashSounds.forEach((sound) => sound.stop());
+        this.miss.stop();
 
         this.music1.pause();
         this.music2.pause();
@@ -497,4 +494,4 @@ export class GameScene extends Phaser.Scene {
 
         this.scene.start("SplashScene");
     }
-}   
+}
